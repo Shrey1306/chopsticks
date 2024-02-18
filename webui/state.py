@@ -6,7 +6,7 @@ import reflex as rx
 #import clipsai
 
 
-openai.api_key = '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'
+openai.api_key = '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'
 openai.api_base = os.getenv("OPENAI_API_BASE", "https://api.openai.com/v1")
 
 BAIDU_API_KEY = os.getenv("BAIDU_API_KEY")
@@ -175,7 +175,7 @@ class State(rx.State):
         Args:
             form_data: A dict with the current question.
         """
-
+        
         # Add the question to the list of questions.
         qa = QA(question=question, answer="")
         self.chats[self.current_chat].append(qa)
@@ -186,30 +186,45 @@ class State(rx.State):
 
         # Build the messages.
         messages = [
-            {"role": "system", "content": "You are a friendly chatbot named prod.ai, a language powered video editing tool to simplify content creation."}
+            {"role": "system","content": "You are an AI assistant tasked with helping editors trim their videos that they streamed, in a shorter form that attracts more viewers. Your role is to analyze the user’s prompt, identify the keywords and run our functions based on this function map '{\"trim_video(self, trim_start_sec, trim_end_sec)\": 1, \"crop_video(self, scale)\": 2,\"zoom_video(self, zoom_scale)\": 3, \"change_speed(self, speed_factor)\": 4, \"fade_in_video(self, duration=2)\": 5, \"fade_out_video(self, duration=2)\": 6}'. *Explanation of these functions* 'trim_video(self, trim_start_sec, trim_end_sec)' is a function that cuts the video out for 'trim_start_sec' seconds from the beginning and for 'trim_end_sec' seconds from the end. If no value is given, assume trim_start_sec and trim_end_sec to be 2 seconds. 'crop_video(self, scale)' adjusts the video’s aspect ratio and dimensions to fit mobile viewing or some other application where cropping is required based on an integer value 'scale' If the ‘scale’ value isn’t given, assume it to be 2. 'zoom_video(self, zoom_scale)' zooms into the video if zoom_scale is a positive integer value greater than 1. Assume the zoom_scale to be 2 if no value is given. 'change_speed(self, speed_factor)' increases the speed of the video based on the integer value of 'speed_factor.' If it’s greater than 1, we increase the speed of the video by that factor. If speed_factor is a negative value, we decrease the speed of the video by a factor of that value. Assume the speed_factor to be 2, if no value is given. 'fade_in_video(self, duration=2)' this function applies a fade in effect to the video for a duration of an integer value represented in the 'duration' parameter. If no value is given, assume the duration to be 2 seconds. 'fade_out_video(self, duration=2)' does the exact opposite of fade_in_video(self, duration=2)'. It applies a fade out effect to the video for a duration of that integer value represented in the duration parameter. If no duration is given, assume the duration to be 2 seconds If any of the parameters is incorrectly inputted by the user or is invalid based on the above description, use the default values as mentioned. The output must strictly adhere to the following format and guidelines:\\n\\n1. *Output Format: It is EXTREMELY IMPORTANT and STRICT that the response is outputted in a JSON Structure. The JSON object should include a list of commands to execute, where each command has the value of the function to call in the corresponding function map, the integer values representing the parameters to those functions, and a justification field \\n - Ensure the keywords match currently with the function parameters.\\n\\n4. **Example Output Structure*:\njson\n{\n  \"clip\": [\n    {\"function_id\": 1, \"parameters\": [12,15]},\n    {\"function_id\": 2, \"parameters\": [2]}, {\"function_id\": 3, \"parameters\": [2]}, {\"function_id\": 4, \"parameters\": [1]}, {\"function_id\": 5, \"parameters\": [2]}, {\"function_id\": 6, \"parameters\": [3]}'\n ],\n  \"justification\": \"Sure, based on the given information, I will show you, your clips. [Brief explanation of what ‘s happening to the video, and how you are defaulting values if no values are given by the user].\"\n}\n\n\nIt is EXTREMELY IMPORTANT and STRICT that the response is outputted as a JSON String within "}
         ]
+
         for qa in self.chats[self.current_chat]:
             messages.append({"role": "user", "content": qa.question})
             messages.append({"role": "assistant", "content": qa.answer})
 
         # Remove the last mock answer.
         messages = messages[:-1]
-
-        # Start a new session to answer the question.
-        session = openai.ChatCompletion.create(
+        response = openai.ChatCompletion.create(
             model=os.getenv("OPENAI_MODEL", "gpt-4"),
+            temperature=0.7,
+            max_tokens=300,
             messages=messages,
-            stream=True,
+            stream=True
         )
 
         # Stream the results, yielding after every word.
-        for item in session:
+        for item in response:
             if hasattr(item.choices[0].delta, "content"):
+                # if answer_text.strip():
                 answer_text = item.choices[0].delta.content
+                '''if "" in answer_text:
+                    parts = answer_text.split("```")
+                    json_str = parts[1] if len(parts) > 1 else ""
+                    if json_str != "":
+                        json_str = json_str.split("json ") 
+                        json_obj = json.loads(json_str)
+                        function_ids = [item["function_id"] for item in json_obj["clip"]]
+                        parameters = [item["parameters"] for item in json_obj["clip"]]
+                        justification = json_obj["justification"]
+                        self.chats[self.current_chat][-1].answer += justification
+                        self.chats = self.chats
+                        yield
+                else:
+                    '''
                 self.chats[self.current_chat][-1].answer += answer_text
                 self.chats = self.chats
                 yield
-
         # Toggle the processing flag.
         self.processing = False
 

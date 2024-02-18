@@ -75,8 +75,18 @@ def videodisplay():
             on_click=rx.clear_selected_files,
             bg=color
         ),
+        rx.chakra.heading("What is this?", size="lg", padding_top="10", padding_bottom="2", align="center"),
+        rx.chakra.text("""
+        Chopsticks is the premier AI-powered editing software that utilizes deep learning to improve efficiency, 
+        enhance user experience, and (amazingly) _increase_ creator profits.
+        """, padding_y="5", align="center"),
+        rx.chakra.image(
+            src="/arrow.png",
+            padding_y="5",
+            align="center",  # This assumes there's an align prop; if not, alignment might need to be handled by the parent
+            width="100px",
+        ),
         spacing="4",
-
     )
     
     # Define the video display section
@@ -105,7 +115,7 @@ def videodisplay():
                 flex_grow="1",
                 align_self="start",
             ),
-            rx.chakra.box(rx.html(VideoDisplayState.dynamic_section), width="60%", border_radius="lg", padding="10px", flex_grow="1", text_align="center", bg='rgba(255,255,255, 0.1)'),
+            rx.chakra.box(rx.html(VideoDisplayState.dynamic_section), width="60%", border_radius="lg", padding="10px", flex_grow="1", text_align="center", bg='rgba(255,255,255, 0.1)', align_items="center"),
             spacing="4",
             align_items="start",
             justify_content="start",
